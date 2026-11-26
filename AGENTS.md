@@ -53,6 +53,15 @@ test, or into the VM's exit.
   a pipeline on its way out gets `:DOWN` at once; the contract is that it then
   watches again, which starts a fresh pipeline. Don't try to close that window
   from inside: answering it in the viewer is simpler and always right.
+- **A viewer leaves by exiting or by `unwatch/3`**, and both take the same
+  path in the pipeline. `unwatch/3` is a call, not a message, so that an
+  `:ended` sent before it is answered is already in the caller's mailbox to
+  flush; afterwards the caller hears nothing more about that stream.
+  `bb_liveview` once ran a process per stream only so it could stop one.
+- **Signaling is started unlinked.** membrane_webrtc_plugin's signaling stops
+  with either peer's exit reason, so `Signaling.new/0` links the caller to
+  every browser's connection failing. The docs, and the test browser, use
+  `Signaling.start/0`.
 - **libx264, latency over size.** `ultrafast`, `zerolatency`, baseline profile,
   no B-frames, keyframe every 30 frames. libx264 has no
   `:constrained_baseline` profile; `:baseline` with no B-frames is the same

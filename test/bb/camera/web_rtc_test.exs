@@ -34,6 +34,16 @@ defmodule BB.Camera.WebRTCTest do
     pipeline
   end
 
+  # A viewer learns either way: `:ended` from the pipeline, or its `:DOWN`.
+  defp assert_stream_ended(viewer) do
+    receive do
+      {:ended, ^viewer} -> :ok
+      {:pipeline_down, ^viewer, _reason} -> :ok
+    after
+      @connected -> flunk("#{inspect(viewer)} was never told its stream ended")
+    end
+  end
+
   test "streams the camera to a WebRTC peer as H.264" do
     browser = browser()
     assert {:ok, _ref} = Browser.watch(browser, TestRobot, :eye)
@@ -83,6 +93,49 @@ defmodule BB.Camera.WebRTCTest do
     assert_receive {:DOWN, ^monitor, :process, _pid, _reason}, @connected
   end
 
+  test "unwatching the last viewer stops the pipeline, and nothing more arrives about it" do
+    viewer = browser()
+    {:ok, ref} = Browser.watch(viewer, TestRobot, :eye)
+    assert_receive {:rtp, ^viewer, _}, @connected
+    monitor = Process.monitor(pipeline())
+
+    assert :ok = Browser.unwatch(viewer, TestRobot, :eye, ref)
+
+    assert_receive {:DOWN, ^monitor, :process, _pid, _reason}, @connected
+    # The viewer has handled everything sent to it before this returns.
+    :sys.get_state(viewer)
+    refute_received {:ended, ^viewer}
+    refute_received {:pipeline_down, ^viewer, _reason}
+  end
+
+  test "unwatching one viewer doesn't stop the others" do
+    staying = browser()
+    leaving = browser()
+
+    {:ok, _ref} = Browser.watch(staying, TestRobot, :eye)
+    {:ok, ref} = Browser.watch(leaving, TestRobot, :eye)
+    assert_receive {:rtp, ^leaving, _}, @connected
+    shared = pipeline()
+
+    assert :ok = Browser.unwatch(leaving, TestRobot, :eye, ref)
+
+    joining = browser()
+    {:ok, _ref} = Browser.watch(joining, TestRobot, :eye)
+    assert_receive {:rtp, ^joining, _}, @connected
+    assert pipeline() == shared
+  end
+
+  test "unwatching a stream that has already ended is fine" do
+    viewer = browser()
+    {:ok, ref} = Browser.watch(viewer, TestRobot, :eye)
+    assert_receive {:rtp, ^viewer, _}, @connected
+
+    stop_supervised!(TestRobot)
+    assert_stream_ended(viewer)
+
+    assert :ok = Browser.unwatch(viewer, TestRobot, :eye, ref)
+  end
+
   test "viewers are told when the camera goes away" do
     viewer = browser()
     {:ok, _ref} = Browser.watch(viewer, TestRobot, :eye)
@@ -90,7 +143,6 @@ defmodule BB.Camera.WebRTCTest do
 
     stop_supervised!(TestRobot)
 
-    assert_receive {ended, ^viewer, _reason_or_nothing} when ended in [:ended, :pipeline_down],
-                   @connected
+    assert_stream_ended(viewer)
   end
 end

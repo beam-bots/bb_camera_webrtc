@@ -12,8 +12,8 @@ defmodule BB.Camera.WebRTC.Pipeline do
   # Viewers arrive as `{:add_viewer, pid, ref, signaling, ice_servers}` from
   # `BB.Camera.WebRTC.watch/4`. Each gets its own branch off the tee in its own
   # crash group, so one browser's failed connection takes down only its own
-  # sink. The pipeline monitors viewers, drops a viewer's branch when it goes,
-  # and stops when the last one has, which releases the camera.
+  # sink. The pipeline monitors viewers, drops a viewer's branch when it goes
+  # or unwatches, and stops when the last one has, which releases the camera.
 
   use Membrane.Pipeline
 
@@ -71,6 +71,21 @@ defmodule BB.Camera.WebRTC.Pipeline do
   end
 
   def handle_info(_message, _ctx, state), do: {[], state}
+
+  # Synchronous so that anything sent to the viewer before the reply - an
+  # `:ended` from its connection failing - is already in its mailbox for
+  # `BB.Camera.WebRTC.unwatch/3` to flush.
+  @impl true
+  def handle_call({:remove_viewer, ref}, _ctx, state) do
+    case Map.fetch(state.viewers, ref) do
+      {:ok, viewer} ->
+        Process.demonitor(viewer.monitor, [:flush])
+        leave(ref, [reply: :ok, remove_children: {:sink, ref}], state)
+
+      :error ->
+        {[reply: :ok], state}
+    end
+  end
 
   # The browser's connection failed, or its sink did; the rest carry on.
   @impl true

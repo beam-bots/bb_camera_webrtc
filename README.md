@@ -22,8 +22,11 @@ previews, and the piece to reach for if you are putting a camera in a web page
 of your own.
 
 ```elixir
-signaling = Membrane.WebRTC.Signaling.new()
+signaling = Membrane.WebRTC.Signaling.start()
 {:ok, ref} = BB.Camera.WebRTC.watch(MyRobot, :eye, signaling)
+
+# ...and when you no longer want it:
+:ok = BB.Camera.WebRTC.unwatch(MyRobot, :eye, ref)
 ```
 
 ## How it works

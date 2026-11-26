@@ -7,11 +7,16 @@ defmodule BB.Camera.WebRTC do
   Streams a Beam Bots camera to browsers over WebRTC, encoding it once however
   many are watching.
 
-      signaling = Membrane.WebRTC.Signaling.new()
+      signaling = Membrane.WebRTC.Signaling.start()
       {:ok, ref} = BB.Camera.WebRTC.watch(MyRobot, :eye, signaling)
 
   The browser is the other peer on `signaling`; see "In the browser" below.
-  The stream runs until the calling process exits.
+  The stream runs until the caller unwatches it with `unwatch/3`, or exits.
+
+  Start the signaling with `start/0`, not `new/0`. A signaling stops when
+  either of its peers does, with that peer's exit reason, so a linked one
+  would take the caller down whenever a browser's connection failed. It stops
+  by itself once the stream has ended, so there is nothing to clean up.
 
   ## One encode per camera
 
@@ -38,7 +43,8 @@ defmodule BB.Camera.WebRTC do
     * `{:DOWN, ref, :process, pid, reason}`, since `ref` also monitors the
       camera's pipeline.
 
-  Either way, start again with a new signaling and another `watch/4`.
+  Either way, start again with a new signaling and another `watch/4`. Neither
+  arrives after `unwatch/3`.
 
   ## Networks
 
@@ -69,7 +75,7 @@ defmodule BB.Camera.WebRTC do
 
   @doc """
   Streams `camera` on `robot` to the peer on `signaling` until the calling
-  process exits.
+  process unwatches it or exits.
 
   ## Options
 
@@ -84,6 +90,38 @@ defmodule BB.Camera.WebRTC do
       send(pipeline, {:add_viewer, self(), ref, signaling, opts[:ice_servers]})
       {:ok, ref}
     end
+  end
+
+  @doc """
+  Stops a stream started by `watch/4` from the same process, leaving the
+  caller's other streams running. The last viewer of a camera unwatching stops
+  its pipeline, releasing the camera.
+
+  Afterwards the caller receives nothing more about `ref`. Unwatching a stream
+  that has already ended returns `:ok`.
+  """
+  @spec unwatch(module(), atom(), reference()) :: :ok
+  def unwatch(robot, camera, ref) do
+    case Registry.lookup(@registry, {robot, camera}) do
+      [{pipeline, _value}] -> remove_viewer(pipeline, ref)
+      [] -> :ok
+    end
+
+    Process.demonitor(ref, [:flush])
+
+    receive do
+      {__MODULE__, ^ref, :ended} -> :ok
+    after
+      0 -> :ok
+    end
+  end
+
+  # A pipeline that stops before it answers has ended the stream anyway. One
+  # that doesn't answer in time still has the viewer, so that one is raised.
+  defp remove_viewer(pipeline, ref) do
+    Membrane.Pipeline.call(pipeline, {:remove_viewer, ref})
+  catch
+    :exit, {reason, _call} when reason != :timeout -> :ok
   end
 
   # Two viewers arriving at once both try to start it; the registry lets one

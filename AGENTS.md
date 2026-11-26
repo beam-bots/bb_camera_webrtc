@@ -30,6 +30,11 @@ The tests stream to a real WebRTC peer — `BB.Camera.WebRTC.Test.Browser`, an
 `ExWebRTC.PeerConnection` playing the browser — and wait for RTP to arrive.
 No browser and no camera hardware is needed.
 
+Under `MIX_ENV=test` the application starts nothing. Each test starts the
+registry and supervisor with `start_supervised!`, after its robot, so its
+pipelines are shut down when it ends instead of outliving it into the next
+test, or into the VM's exit.
+
 ## Design decisions worth not re-litigating
 
 - **Cameras know nothing about WebRTC.** The pipeline reads the camera through

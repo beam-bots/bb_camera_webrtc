@@ -14,25 +14,13 @@ defmodule BB.Camera.WebRTCTest do
   # keyframe - not a guess at how long they take.
   @connected 15_000
 
+  # Started after the robot so that they stop before it: each test's
+  # pipelines are shut down with the test, while their camera still exists.
   setup do
-    # A pipeline outlives its test briefly, ending once its viewers and robot
-    # have. Joining one on its way out ends the stream at once - which a real
-    # viewer answers by watching again - so each test starts once the last
-    # one's pipeline is gone.
-    await_no_pipeline()
     start_supervised!(TestRobot)
+    start_supervised!({Registry, keys: :unique, name: WebRTC.Registry})
+    start_supervised!({DynamicSupervisor, name: WebRTC.Supervisor, strategy: :one_for_one})
     :ok
-  end
-
-  defp await_no_pipeline do
-    case Registry.lookup(BB.Camera.WebRTC.Registry, {TestRobot, :eye}) do
-      [] ->
-        :ok
-
-      [{pipeline, _value}] ->
-        monitor = Process.monitor(pipeline)
-        assert_receive {:DOWN, ^monitor, :process, _pid, _reason}, @connected
-    end
   end
 
   defp browser do
@@ -42,7 +30,7 @@ defmodule BB.Camera.WebRTCTest do
   end
 
   defp pipeline do
-    [{pipeline, _value}] = Registry.lookup(BB.Camera.WebRTC.Registry, {TestRobot, :eye})
+    [{pipeline, _value}] = Registry.lookup(WebRTC.Registry, {TestRobot, :eye})
     pipeline
   end
 
@@ -62,7 +50,7 @@ defmodule BB.Camera.WebRTCTest do
 
     assert_receive {:rtp, ^first, _}, @connected
     assert_receive {:rtp, ^second, _}, @connected
-    assert [_one] = Registry.lookup(BB.Camera.WebRTC.Registry, {TestRobot, :eye})
+    assert [_one] = Registry.lookup(WebRTC.Registry, {TestRobot, :eye})
   end
 
   test "a viewer leaving doesn't stop the others" do

@@ -46,7 +46,17 @@ defmodule BB.Camera.WebRTC.MixProject do
     ]
   end
 
-  def application do
+  def application, do: application(Mix.env())
+
+  # Tests start the registry and supervisor themselves, so that each test's
+  # pipelines stop with it rather than outliving it.
+  def application(:test) do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
+  def application(_) do
     [
       extra_applications: [:logger],
       mod: {BB.Camera.WebRTC.Application, []}

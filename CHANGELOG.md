@@ -11,6 +11,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.1](https://github.com/beam-bots/bb_camera_webrtc/compare/v0.1.0...v0.1.1) (2026-11-26)
+
+
+
+
+### Improvements:
+
+* add `BB.Camera.WebRTC.unwatch/3` (#3) by James Harton
+
 ## [v0.1.0](https://github.com/beam-bots/bb_camera_webrtc/compare/v0.1.0...v0.1.0) (2026-11-26)
 
 

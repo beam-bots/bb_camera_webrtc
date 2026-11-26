@@ -9,7 +9,7 @@ defmodule BB.Camera.WebRTC.MixProject do
   WebRTC streaming of Beam Bots cameras to browsers, encoded once per camera.
   """
 
-  @version "0.1.0"
+  @version "0.1.1"
 
   def project do
     [

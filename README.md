@@ -58,7 +58,7 @@ takes longer to encode and send.
 ```elixir
 def deps do
   [
-    {:bb_camera_webrtc, "~> 0.1.0"},
+    {:bb_camera_webrtc, "~> 0.1.1"},
 
     # Membrane's `ratio` pins `decimal` below what `bb` wants, and below the
     # versions that fix its DoS advisories. `ratio` treats `decimal` as

@@ -82,7 +82,7 @@ defmodule BB.Camera.WebRTC.MixProject do
   defp deps do
     [
       {:bb, bb_dep("~> 0.33")},
-      {:bb_camera, bb_dep("~> 0.1", :bb_camera)},
+      {:bb_camera, bb_dep("~> 0.2", :bb_camera)},
       {:membrane_core, "~> 1.3"},
       {:membrane_h264_ffmpeg_plugin, "~> 0.32"},
       {:membrane_h26x_plugin, "~> 0.10"},

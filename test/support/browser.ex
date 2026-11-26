@@ -24,10 +24,14 @@ defmodule BB.Camera.WebRTC.Test.Browser do
   @doc "Watch `camera` from the browser's own process, as a LiveView would."
   def watch(browser, robot, camera), do: GenServer.call(browser, {:watch, robot, camera})
 
+  @doc "Stop watching, from the browser's own process."
+  def unwatch(browser, robot, camera, ref),
+    do: GenServer.call(browser, {:unwatch, robot, camera, ref})
+
   @impl true
   def init(report_to) do
     {:ok, pc} = PeerConnection.start_link(ice_servers: [])
-    signaling = Signaling.new()
+    signaling = Signaling.start()
     :ok = Signaling.register_peer(signaling)
     {:ok, %{pc: pc, signaling: signaling, report_to: report_to, reported?: false}}
   end
@@ -35,6 +39,10 @@ defmodule BB.Camera.WebRTC.Test.Browser do
   @impl true
   def handle_call({:watch, robot, camera}, _from, state) do
     {:reply, WebRTC.watch(robot, camera, state.signaling), state}
+  end
+
+  def handle_call({:unwatch, robot, camera, ref}, _from, state) do
+    {:reply, WebRTC.unwatch(robot, camera, ref), state}
   end
 
   @impl true

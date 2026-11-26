@@ -13,10 +13,14 @@ file covers only streaming.
 ## Core principles
 
 1. **Watch from the process that owns the viewer.** The stream lasts until the
-   caller of `watch/4` exits; for a LiveView, call it from the LiveView.
-2. **Handle the end of a stream by watching again.** `{BB.Camera.WebRTC, ref,
+   caller of `watch/4` calls `unwatch/3` or exits; for a LiveView, call both
+   from the LiveView.
+2. **Start signaling with `Signaling.start/0`, never `new/0`.** A signaling
+   stops when either peer does, with that peer's reason, so a linked one
+   crashes the caller whenever a browser's connection fails.
+3. **Handle the end of a stream by watching again.** `{BB.Camera.WebRTC, ref,
    :ended}` or `{:DOWN, ref, ...}` both mean it, with a new signaling.
-3. **Never encode a camera yourself for a second viewer.** Call `watch/4`
+4. **Never encode a camera yourself for a second viewer.** Call `watch/4`
    again; the camera's one encoder is shared.
 
 ## Wiring it in
@@ -24,7 +28,7 @@ file covers only streaming.
 ```elixir
 def mount(_params, _session, socket) do
   if connected?(socket) do
-    signaling = Membrane.WebRTC.Signaling.new()
+    signaling = Membrane.WebRTC.Signaling.start()
     :ok = Membrane.WebRTC.Signaling.register_peer(signaling, message_format: :json_data)
     {:ok, ref} = BB.Camera.WebRTC.watch(MyRobot, :eye, signaling)
     {:ok, assign(socket, signaling: signaling, watch: ref)}
@@ -58,6 +62,7 @@ and `assets/player.js` bundled as the `CameraPlayer` hook.
 
 - **Calling `watch/4` from a short-lived process.** The stream stops when it
   exits.
+- **A process per stream just to be able to stop one.** That is `unwatch/3`.
 - **Ignoring `:ended`.** The video freezes on its last frame and stays there.
 - **Using membrane_webrtc_plugin's own `createPlayerHook`** (0.26). It throws
   in an ES module before the connection can complete.

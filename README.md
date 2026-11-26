@@ -78,4 +78,4 @@ const Hooks = { CameraPlayer: createPlayerHook() };
 
 ## Licence
 
-Apache 2.0. See [LICENSES](LICENSES).
+Apache-2.0. See `LICENSES/`.
